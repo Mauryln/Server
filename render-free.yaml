@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: whatsapp-automator-server-free
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MAX_SESSIONS
+        value: 3
+      - key: SESSION_TIMEOUT_MINUTES
+        value: 20
+      - key: CLEANUP_INTERVAL_MINUTES
+        value: 5
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 900000
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: 50
+      - key: LOG_LEVEL
+        value: warn
+    healthCheckPath: /health
+    autoDeploy: true 
