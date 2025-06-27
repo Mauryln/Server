@@ -10,7 +10,16 @@ const rateLimit = require('express-rate-limit');
 const cron = require('node-cron');
 
 // Importar módulos locales
-const config = require('./config');
+let config;
+if (process.env.RENDER || process.env.NODE_ENV === 'production') {
+    // Render o producción
+    config = require('./config-render-free');
+    // console.log('Usando configuración para Render/Producción');
+} else {
+    // Desarrollo local
+    config = require('./config');
+    // console.log('Usando configuración para Desarrollo Local');
+}
 const logger = require('./utils/logger');
 const sessionManager = require('./utils/sessionManager');
 
