@@ -15,8 +15,7 @@ const config = {
     // Configuración de sesiones
     sessions: {
         maxSessions: parseInt(process.env.MAX_SESSIONS) || 50,
-        timeoutMinutes: parseInt(process.env.SESSION_TIMEOUT_MINUTES) || 30,
-        cleanupIntervalMinutes: parseInt(process.env.CLEANUP_INTERVAL_MINUTES) || 5,
+        cleanupIntervalMinutes: parseInt(process.env.CLEANUP_INTERVAL_MINUTES) || 1440, // 1 día
     },
     
     // Configuración de Puppeteer
@@ -40,7 +39,7 @@ const config = {
     // Configuración de mensajes
     messages: {
         defaultDelay: 8000,
-        maxConcurrentSends: 5,
+        maxConcurrentSends: 1000,
         retryAttempts: 3,
     }
 };

@@ -234,11 +234,11 @@ app.get('/labels/:userId', async (req, res) => {
         sessionManager.updateActivity(userId);
         
         if (typeof client.getLabels !== 'function') {
-            logger.info('Labels not supported for this account', { userId });
-            return res.status(501).json({ 
-                success: false, 
-                error: 'Fetching labels is likely not supported for this account.',
-                message: 'This feature requires a WhatsApp Business account.'
+            logger.info('Labels not supported for this account (getLabels missing)', { userId });
+            return res.status(200).json({ 
+                success: true, 
+                labels: [],
+                message: 'No labels found or not supported for this account.'
             });
         }
         
@@ -257,15 +257,11 @@ app.get('/labels/:userId', async (req, res) => {
         res.json({ success: true, labels: labels });
     } catch (error) {
         logger.error('Error fetching labels', { userId, error: error.message });
-        if (error.message.includes("Evaluation failed") || error.message.includes("window.WWebJS.getLabels is not a function")) {
-            res.status(501).json({ 
-                success: false, 
-                error: 'Failed to fetch labels. This feature might require a WhatsApp Business account.',
-                message: 'This feature requires a WhatsApp Business account.'
-            });
-        } else {
-            res.status(500).json({ success: false, error: 'Failed to fetch labels: ' + error.message });
-        }
+        return res.status(200).json({
+            success: true,
+            labels: [],
+            message: 'No labels found or error fetching labels.'
+        });
     }
 });
 
