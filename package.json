@@ -5,6 +5,7 @@
   "scripts": {
     "start": "node index.js",
     "start:free": "NODE_ENV=production node -r dotenv/config index.js",
+    "start:pro": "NODE_ENV=production RENDER_PLAN=professional node -r dotenv/config index.js",
     "dev": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

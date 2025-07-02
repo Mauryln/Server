@@ -13,12 +13,17 @@ const cron = require('node-cron');
 let config;
 if (process.env.RENDER || process.env.NODE_ENV === 'production') {
     // Render o producción
-    config = require('./config-render-free');
-    // console.log('Usando configuración para Render/Producción');
+    if (process.env.RENDER_PLAN === 'professional') {
+        config = require('./config-render-pro');
+        console.log('Usando configuración para Render Plan Profesional');
+    } else {
+        config = require('./config-render-free');
+        console.log('Usando configuración para Render Plan Gratuito/Starter');
+    }
 } else {
     // Desarrollo local
     config = require('./config');
-    // console.log('Usando configuración para Desarrollo Local');
+    console.log('Usando configuración para Desarrollo Local');
 }
 const logger = require('./utils/logger');
 const sessionManager = require('./utils/sessionManager');

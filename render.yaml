@@ -2,24 +2,26 @@ services:
   - type: web
     name: whatsapp-automator-server
     env: node
-    plan: starter
+    plan: professional
     buildCommand: npm install
     startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
+      - key: RENDER_PLAN
+        value: professional
       - key: PORT
         value: 10000
       - key: MAX_SESSIONS
-        value: 20
+        value: 50
       - key: SESSION_TIMEOUT_MINUTES
-        value: 45
+        value: 60
       - key: CLEANUP_INTERVAL_MINUTES
-        value: 10
+        value: 15
       - key: RATE_LIMIT_WINDOW_MS
         value: 900000
       - key: RATE_LIMIT_MAX_REQUESTS
-        value: 200
+        value: 500
       - key: LOG_LEVEL
         value: info
     healthCheckPath: /health
@@ -27,4 +29,4 @@ services:
     disk:
       name: whatsapp-data
       mountPath: /opt/render/project/src/data
-      sizeGB: 10 
+      sizeGB: 20 
