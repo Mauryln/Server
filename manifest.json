@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "WhatsApp Bimcat",
+  "version": "3.0",
+  "description": "Extrae números de teléfono de grupos de WhatsApp Web.",
+  "permissions": [
+    "scripting",
+    "activeTab",
+    "downloads",
+    "tabs",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://web.whatsapp.com/",
+    "https://localhost/3000/"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon.png",
+      "32": "icon.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://web.whatsapp.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["xlsx.full.min.js", "qrcode.min.js"],
+      "matches": ["https://web.whatsapp.com/*"]
+    }
+  ]
+}

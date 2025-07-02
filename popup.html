@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Extensión WhatsApp</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="trix.css">
+</head>
+<body class="light-theme">
+  <!-- Sección de login mejorada -->
+  <div class="session-controls">
+    <div class="session-status" id="session-status-indicator">
+      <i class="fas fa-circle status-indicator"></i>
+      <span id="session-status-text">No conectado</span>
+    </div>
+    <div class="session-buttons">
+      <button id="start-session-btn" class="btn green">
+        <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
+      </button>
+      <button id="scan-qr-btn" class="btn blue" style="display:none;">
+        <i class="fas fa-qrcode"></i> Mostrar QR
+      </button>
+      <button id="close-session-btn" class="btn red" style="display:none;">
+        <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+      </button>
+    </div>
+  </div>
+  
+  
+  <!-- Información de sesión restaurable -->
+  <div id="session-info" class="session-info" style="display: none;">
+    <div class="info-card">
+      <i class="fas fa-info-circle"></i>
+      <div class="info-content">
+        <h4>Sesión Guardada</h4>
+        <p>Se encontró una sesión anterior. Se intentará restaurar automáticamente.</p>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Modal para mostrar el código QR -->
+  <div id="qr-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Escanea este código con WhatsApp</h2>
+        <span class="close-modal">&times;</span>
+      </div>
+      <div class="modal-body">
+        <div id="qr-container">
+          <!-- El código QR se generará aquí -->
+          <div class="qr-loading">
+            <div class="spinner"></div>
+            <p>Generando código QR...</p>
+          </div>
+        </div>
+        <p class="qr-instructions">Abre WhatsApp en tu teléfono, toca Menú o Configuración y selecciona WhatsApp Web. Apunta tu teléfono hacia esta pantalla para escanear el código.</p>
+      </div>
+    </div>
+  </div>
+  
+  <div class="app-container">
+    <nav class="navbar">
+      <div class="logo-container">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/WhatsApp.svg/512px-WhatsApp.svg.png" alt="WhatsApp Logo" class="logo">
+        <h1>WhatsApp</h1>
+      </div>
+      <div class="nav-tabs">
+        <button class="nav-tab active" data-tab="numbers">
+          <i class="fas fa-address-book"></i>
+          <span>Números</span>
+        </button>
+        <button class="nav-tab" data-tab="message">
+          <i class="fas fa-comment-alt"></i>
+          <span>Mensaje</span>
+        </button>
+        <button class="nav-tab" data-tab="reportes">
+          <i class="fas fa-chart-line"></i>
+          <span>Reportes</span>
+        </button>
+      </div>
+    </nav>
+
+    <div class="container">
+      <!-- Tab 1: Extract & Load Numbers -->
+      <div class="tab-content active" id="numbers-tab">
+        <!-- Convertir a menús desplegables -->
+        <div class="action-dropdown" id="extract-dropdown">
+          <div class="action-dropdown-header">
+            <i class="fas fa-download"></i>
+            <span>Extraer Números</span>
+            <i class="fas fa-chevron-down"></i>
+          </div>
+          <div class="action-dropdown-content">
+            <p>Extrae números del grupo abierto en WhatsApp Web</p>
+            <button id="extractBtn" class="btn green">
+              <i class="fas fa-download"></i> Extraer Números
+            </button>
+            <div id="group-info" class="group-info"></div>
+          </div>
+        </div>
+        <div class="action-dropdown" id="load-dropdown">
+          <div class="action-dropdown-header">
+            <i class="fas fa-file-excel"></i>
+            <span>Cargar Números</span>
+            <i class="fas fa-chevron-down"></i>
+          </div>
+          <div class="action-dropdown-content">
+            <p>Carga números desde un archivo Excel</p>
+            <div class="file-input-container">
+              <input type="file" id="excelFile" accept=".xlsx" />
+              <label for="excelFile">
+                <i class="fas fa-file-excel"></i>
+                <span>Seleccionar archivo</span>
+              </label>
+            </div>
+            <button id="loadBtn" class="btn blue">
+              <i class="fas fa-upload"></i> Cargar Números
+            </button>
+          </div>
+        </div>
+
+        
+        <!-- Manual Number Entry - Collapsible -->
+        <div class="action-card manual-entry collapsible">
+          <div class="card-header toggle-header">
+            <i class="fas fa-plus-circle"></i>
+            <h3>Agregar Número Manualmente</h3>
+            <i class="fas fa-chevron-down toggle-icon"></i>
+          </div>
+          <div class="card-body collapse-content">
+            <div class="manual-number-form">
+              <div class="country-code-select">
+                <label for="countryCode">Código de país:</label>
+                <select id="countryCode">
+                  <option value="+591">+591</option>
+                  <option value="+54">+54</option>
+                  <option value="+56">+56</option>
+                  <option value="+51">+51</option>
+                  <option value="other">Otro</option>
+                </select>
+                <div id="customCodeContainer" class="custom-code-container" style="display: none;">
+                  <input type="text" id="customCountryCode" placeholder="Ej: +52" />
+                </div>
+              </div>
+              <div class="phone-input">
+                <label for="phoneNumber">Número:</label>
+                <input type="tel" id="phoneNumber" placeholder="Ej: 70123456" />
+              </div>
+              <div class="multiple-numbers-input">
+                <label for="multipleNumbers">Pegar múltiples números:</label>
+                <textarea id="multipleNumbers" placeholder="Pega aquí varios números, uno por línea o separados por comas"></textarea>
+              </div>
+              <div class="button-group">
+                <button id="addNumberBtn" class="btn green">
+                  <i class="fas fa-plus"></i> Agregar Número
+                </button>
+                <button id="addMultipleNumbersBtn" class="btn blue">
+                  <i class="fas fa-paste"></i> Agregar Múltiples Números
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+
+        <!-- Cargar desde Etiquetas - Convertido a dropdown -->
+        <div class="action-dropdown" id="label-dropdown">
+          <div class="action-dropdown-header">
+            <i class="fas fa-tags"></i>
+            <span>Cargar desde Etiquetas</span>
+            <i class="fas fa-chevron-down"></i>
+          </div>
+          <div class="action-dropdown-content">
+            <p>Carga números etiquetados desde WhatsApp Business</p>
+            <select id="labelSelector" class="form-control" disabled>
+              <option value="">Conecta WhatsApp primero</option>
+            </select>
+            <button id="loadLabelBtn" class="btn blue" style="margin-top: 10px;">
+              <i class="fas fa-tag"></i> Cargar Números
+            </button>
+            <div id="label-info" class="label-info"></div>
+          </div>
+        </div>
+
+        <div class="numbers-section">
+          <div class="section-header">
+            <h2>Números Cargados</h2>
+            <div class="select-controls">
+              <button id="selectAll" class="btn-sm">
+                <i class="fas fa-check-square"></i> Todos
+              </button>
+              <button id="deselectAll" class="btn-sm">
+                <i class="fas fa-square"></i> Ninguno
+              </button>
+              <button id="deleteSelected" class="btn-sm red">
+                <i class="fas fa-trash"></i> Eliminar
+              </button>
+            </div>
+          </div>
+          
+          <div id="numberList" class="checkbox-list">
+            <!-- Los checkboxes se llenarán dinámicamente con los números extraídos del archivo Excel -->
+          </div>
+          
+          <div class="numbers-counter">
+            <span id="selected-count">0</span> de <span id="total-count">0</span> números seleccionados
+          </div>
+        </div>
+      </div>
+      
+      <!-- Tab 2: Message Composition & Sending -->
+      <div class="tab-content" id="message-tab">
+        <div class="message-composer">
+          <div class="section-header">
+            <h2>Componer Mensaje</h2>
+          </div>
+          
+          <!-- Selected Numbers Dropdown -->
+          <div class="selected-numbers-dropdown">
+            <div class="dropdown-header">
+              <i class="fas fa-users"></i>
+              <span id="selected-numbers-count">0 números seleccionados</span>
+              <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="dropdown-content">
+              <div class="dropdown-info">Verificar números antes de enviar:</div>
+              <div id="selected-numbers-list" class="selected-numbers-list">
+                <!-- Selected numbers will be displayed here -->
+              </div>
+            </div>
+          </div>
+          
+          <div class="textarea-container">
+            <trix-editor id="trix-editor" input="trix-input"></trix-editor>
+            <input id="trix-input" type="hidden" name="content">
+            <div class="textarea-tools">
+              <button id="emoji-btn" class="tool-btn" title="Insertar emoji">
+                <i class="fas fa-smile"></i>
+              </button>
+              <button id="template-btn" class="tool-btn" title="Plantillas">
+                <i class="fas fa-clipboard-list"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div class="emoji-picker" id="emoji-picker">
+            <div class="emoji-categories">
+              <button class="emoji-category active" data-category="smileys">😊</button>
+              <button class="emoji-category" data-category="people">👋</button>
+              <button class="emoji-category" data-category="animals">🐶</button>
+              <button class="emoji-category" data-category="food">🍎</button>
+              <button class="emoji-category" data-category="travel">🚗</button>
+              <button class="emoji-category" data-category="activities">⚽</button>
+              <button class="emoji-category" data-category="objects">💡</button>
+              <button class="emoji-category" data-category="symbols">❤️</button>
+            </div>
+            <div class="emoji-container">
+              <!-- Emojis will be loaded here -->
+            </div>
+          </div>
+        </div>
+        
+        <div class="send-options">
+          <div class="section-header">
+            <h2>Opciones de Envío</h2>
+          </div>
+          
+          <div class="options-grid">
+            <div class="option-card">
+              <div class="option-header">
+                <i class="fas fa-clock"></i>
+                <h3>Intervalo</h3>
+              </div>
+              <div class="option-body">
+                <label for="delaySelect">Delay entre mensajes:</label>
+                <select id="delaySelect">
+                  <option value="8000">8 segundos</option>
+                  <option value="10000">10 segundos</option>
+                  <option value="15000">15 segundos</option>
+                  <option value="20000">20 segundos</option>
+                  <option value="30000">30 segundos</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="option-card">
+              <div class="option-header">
+                <i class="fas fa-paperclip"></i>
+                <h3>Adjuntos</h3>
+              </div>
+              <div class="option-body">
+                <div class="attachment-buttons">
+                  <label for="mediaFile" class="attachment-btn">
+                    <i class="fas fa-image"></i>
+                    <span>Imagen</span>
+                  </label>
+                  <label for="mediaFile" class="attachment-btn">
+                    <i class="fas fa-file-pdf"></i>
+                    <span>Documento</span>
+                  </label>
+                </div>
+                <input type="file" id="mediaFile" accept="image/*,audio/*,.pdf,.doc,.docx,.xlsx,.txt" hidden />
+              </div>
+            </div>
+          </div>
+          
+          <div class="attachment-preview" id="attachment-preview">
+            <p>No hay archivos seleccionados</p>
+          </div>
+          
+          <button id="enviar-btn" class="btn yellow">
+            <i class="fas fa-paper-plane"></i> Enviar Mensajes
+          </button>
+          
+          <div class="send-status" id="send-status">
+            <div class="progress-container">
+              <div class="progress-bar">
+                <div class="progress" id="send-progress"></div>
+              </div>
+              <div class="progress-text">
+                <span id="sent-count">0</span> de <span id="total-send-count">0</span> mensajes enviados
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 3: Reportes - Mejorado -->
+      <div class="tab-content" id="reportes-tab">
+        <div class="section-header">
+          <h2>Generar Reporte</h2>
+        </div>
+      
+        <div class="action-card">
+          <div class="card-header">
+            <i class="fas fa-tags"></i>
+            <h3>Seleccionar Etiqueta</h3>
+          </div>
+          <div class="card-body">
+            <select id="report-label-selector" class="form-control">
+              <option value="">Conecta WhatsApp primero</option>
+            </select>
+            <button id="loadMessagesBtn" class="btn blue">
+              <i class="fas fa-sync-alt"></i> Cargar Mensajes
+            </button>
+          </div>
+        </div>
+      
+        <div class="action-card">
+          <div class="card-header">
+            <i class="fas fa-envelope-open-text"></i>
+            <h3>Mensajes Enviados</h3>
+          </div>
+          <div class="card-body">
+            <select id="sentMessagesDropdown" class="form-control" disabled>
+              <option value="">Primero carga una etiqueta</option>
+            </select>
+            <button id="generateReportBtn" class="btn green">
+              <i class="fas fa-file-excel"></i> Generar Excel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <footer class="app-footer">
+      <div class="footer-info">
+        <span>Proyecto</span>
+        <span class="version">v1.2e.34</span>
+      </div>
+      <button id="settings-btn" class="icon-btn" title="Cambiar tema">
+        <i class="fas fa-moon"></i>
+      </button>
+    </footer>
+  </div>
+
+  <!-- Scripts - Nota: sessionManager.js debe cargarse antes que qrwait.js -->
+  <script src="qrcode.min.js"></script>
+  <script src="sessionManager.js"></script>
+  <script src="qrwait.js"></script>
+  <script src="animations.js"></script>
+  <script src="xlsx.full.min.js"></script>
+  <script src="enviarMensajes.js"></script>
+  <script src="labelLoader.js"></script>
+  <script src="reportGenerator.js"></script>
+  <script src="groupExtractor.js"></script>
+  <script src="numberManager.js"></script>
+  <script src="excelLoader.js"></script>
+  <script src="quill.min.js"></script>
+  <script src="quill-init.js"></script>
+  <script src="trix.js"></script>
+  
+</body>
+</html>
