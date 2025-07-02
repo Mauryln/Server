@@ -357,6 +357,49 @@ app.get('/groups/:userId/:groupId/participants', async (req, res) => {
     }
 });
 
+// Nuevo endpoint: obtener todas las etiquetas y sus números
+app.get('/labels/:userId/all-chats', async (req, res) => {
+    const userId = req.params.userId;
+    const client = sessionManager.getSession(userId);
+
+    if (!client || sessionManager.getSessionStatus(userId) !== 'ready') {
+        return res.status(400).json({ success: false, error: 'WhatsApp session not ready.' });
+    }
+
+    try {
+        sessionManager.updateActivity(userId);
+
+        if (typeof client.getLabels !== 'function' || typeof client.getChatsByLabelId !== 'function') {
+            return res.status(501).json({
+                success: false,
+                error: 'Labels or chats by label not supported for this account.'
+            });
+        }
+
+        const labels = await client.getLabels();
+        if (!labels || labels.length === 0) {
+            return res.json({ success: true, labels: [] });
+        }
+
+        // Para cada etiqueta, obtener los números
+        const result = [];
+        for (const label of labels) {
+            try {
+                const chats = await client.getChatsByLabelId(label.id);
+                const numbers = chats.map(chat => chat.id.user);
+                result.push({ id: label.id, name: label.name, numbers });
+            } catch (err) {
+                result.push({ id: label.id, name: label.name, numbers: [], error: err.message });
+            }
+        }
+
+        res.json({ success: true, labels: result });
+    } catch (error) {
+        logger.error('Error fetching all chats by label', { userId, error: error.message });
+        res.status(500).json({ success: false, error: 'Failed to fetch all chats by label: ' + error.message });
+    }
+});
+
 // --- Endpoint de Envío de Mensajes Optimizado ---
 
 app.post('/send-messages', upload.single('media'), async (req, res) => {
