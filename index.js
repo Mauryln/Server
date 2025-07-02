@@ -32,17 +32,17 @@ app.use(cors({
 }));
 
 // Rate limiting
-const limiter = rateLimit({
-    windowMs: config.rateLimit.windowMs,
-    max: config.rateLimit.maxRequests,
-    message: {
-        success: false,
-        error: 'Too many requests, please try again later.'
-    },
-    standardHeaders: true,
-    legacyHeaders: false,
-});
-app.use(limiter);
+// const limiter = rateLimit({
+//     windowMs: config.rateLimit.windowMs,
+//     max: config.rateLimit.maxRequests,
+//     message: {
+//         success: false,
+//         error: 'Too many requests, please try again later.'
+//     },
+//     standardHeaders: true,
+//     legacyHeaders: false,
+// });
+// app.use(limiter);
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));

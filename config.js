@@ -7,10 +7,10 @@ const config = {
     nodeEnv: process.env.NODE_ENV || 'development',
     
     // Límites de rate limiting
-    rateLimit: {
-        windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutos
-        maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
-    },
+    //rateLimit: {
+    //    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutos
+    //    maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
+    //},
     
     // Configuración de sesiones
     sessions: {
