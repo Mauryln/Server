@@ -10,21 +10,9 @@ const rateLimit = require('express-rate-limit');
 const cron = require('node-cron');
 
 // Importar módulos locales
-let config;
-if (process.env.RENDER || process.env.NODE_ENV === 'production') {
-    // Render o producción
-    if (process.env.RENDER_PLAN === 'professional') {
-        config = require('./config-render-pro');
-        console.log('Usando configuración para Render Plan Profesional');
-    } else {
-        config = require('./config-render-free');
-        console.log('Usando configuración para Render Plan Gratuito/Starter');
-    }
-} else {
-    // Desarrollo local
-    config = require('./config');
-    console.log('Usando configuración para Desarrollo Local');
-}
+// Cargar configuración unificada
+const config = require('./config');
+console.log(`Usando configuración para el entorno: ${config.nodeEnv}`);
 const logger = require('./utils/logger');
 const sessionManager = require('./utils/sessionManager');
 

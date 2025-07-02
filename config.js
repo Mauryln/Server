@@ -3,7 +3,7 @@ require('dotenv').config();
 const config = {
     // Configuración del servidor
     port: process.env.PORT || 3000,
-    ipAddress: process.env.IP_ADDRESS || '127.0.0.1',
+    ipAddress: process.env.NODE_ENV === 'production' ? '0.0.0.0' : (process.env.IP_ADDRESS || '127.0.0.1'),
     nodeEnv: process.env.NODE_ENV || 'development',
     
     // Límites de rate limiting
