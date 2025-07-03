@@ -18,10 +18,10 @@ class SessionManager {
         // Iniciar limpieza automática
         this.startCleanupScheduler();
         
-        logger.info('SessionManager initialized', {
-            maxSessions: config.sessions.maxSessions,
-            timeoutMinutes: config.sessions.timeoutMinutes
-        });
+        // logger.info('SessionManager initialized', {
+        //     maxSessions: config.sessions.maxSessions,
+        //     timeoutMinutes: config.sessions.timeoutMinutes
+        // });
     }
 
     initializeDirectories() {
@@ -43,10 +43,10 @@ class SessionManager {
         if (this.sessions.size >= config.sessions.maxSessions) {
             const oldestSession = this.getOldestSession();
             if (oldestSession) {
-                logger.warn('Session limit reached, removing oldest session', { 
-                    removedUserId: oldestSession,
-                    currentSessions: this.sessions.size 
-                });
+                // logger.warn('Session limit reached, removing oldest session', { 
+                //     removedUserId: oldestSession,
+                //     currentSessions: this.sessions.size 
+                // });
                 await this.destroySession(oldestSession);
             }
         }
@@ -55,7 +55,7 @@ class SessionManager {
         if (this.sessions.has(userId)) {
             const status = this.sessionStatus.get(userId);
             if (['ready', 'initializing', 'needs_scan', 'authenticated'].includes(status)) {
-                logger.info('Session already exists', { userId, status });
+                // logger.info('Session already exists', { userId, status });
                 return { success: true, message: `Session already ${status}`, status };
             }
             // Limpiar sesión anterior
@@ -64,7 +64,7 @@ class SessionManager {
 
         // Crear nueva sesión
         try {
-            logger.info('Creating new session', { userId });
+            // logger.info('Creating new session', { userId });
             
             this.sessionStatus.set(userId, 'initializing');
             this.qrCodes.set(userId, null);
@@ -109,21 +109,21 @@ class SessionManager {
 
     setupEventHandlers(client, userId) {
         client.on('qr', (qr) => {
-            logger.info('QR Code generated', { userId });
+            // logger.info('QR Code generated', { userId });
             this.qrCodes.set(userId, qr);
             this.sessionStatus.set(userId, 'needs_scan');
             this.updateActivity(userId);
         });
 
         client.on('ready', () => {
-            logger.info('WhatsApp client ready', { userId });
+            // logger.info('WhatsApp client ready', { userId });
             this.sessionStatus.set(userId, 'ready');
             this.qrCodes.set(userId, null);
             this.updateActivity(userId);
         });
 
         client.on('authenticated', () => {
-            logger.info('Client authenticated', { userId });
+            // logger.info('Client authenticated', { userId });
             this.sessionStatus.set(userId, 'authenticated');
             this.qrCodes.set(userId, null);
             this.updateActivity(userId);
@@ -136,7 +136,7 @@ class SessionManager {
         });
 
         client.on('disconnected', (reason) => {
-            logger.warn('Client disconnected', { userId, reason });
+            // logger.warn('Client disconnected', { userId, reason });
             this.sessionStatus.set(userId, 'disconnected');
             this.destroySession(userId);
         });
@@ -149,7 +149,7 @@ class SessionManager {
                 const status = this.sessionStatus.get(userId);
                 if (['ready', 'authenticated'].includes(status)) {
                     await client.logout();
-                    logger.info('Client logout successful', { userId });
+                    // logger.info('Client logout successful', { userId });
                 }
             } catch (error) {
                 logger.warn('Error during logout', { userId, error: error.message });
@@ -157,7 +157,7 @@ class SessionManager {
 
             try {
                 await client.destroy();
-                logger.info('Client instance destroyed', { userId });
+                // logger.info('Client instance destroyed', { userId });
             } catch (error) {
                 logger.error('Error destroying client', { userId, error: error.message });
             }
@@ -170,17 +170,24 @@ class SessionManager {
         this.lastActivity.delete(userId);
         this.sessionLocks.delete(userId);
 
-        // Limpiar directorio de sesión
-        const sessionFolderPath = path.join(__dirname, '..', '.wwebjs_auth', `session-${userId}`);
-        if (fs.existsSync(sessionFolderPath)) {
-            fs.rm(sessionFolderPath, { recursive: true, force: true }, (err) => {
-                if (err) {
-                    logger.error('Error removing session folder', { userId, error: err.message });
-                } else {
-                    logger.info('Session folder removed', { userId });
-                }
-            });
-        }
+        // Limpiar directorios de sesión y caché
+        const sessionAuthPath = path.join(__dirname, '..', '.wwebjs_auth', `session-${userId}`);
+        const sessionCachePath = path.join(__dirname, '..', `.wwebjs_cache_${userId}`);
+
+        const removeDir = (dirPath, dirName) => {
+            if (fs.existsSync(dirPath)) {
+                fs.rm(dirPath, { recursive: true, force: true }, (err) => {
+                    if (err) {
+                        logger.error(`Error removing ${dirName} folder`, { userId, error: err.message });
+                    } else {
+                        // logger.info(`${dirName} folder removed`, { userId });
+                    }
+                });
+            }
+        };
+
+        removeDir(sessionAuthPath, 'Session auth');
+        removeDir(sessionCachePath, 'Session cache');
     }
 
     getSession(userId) {
@@ -225,15 +232,15 @@ class SessionManager {
         }
 
         for (const userId of sessionsToRemove) {
-            logger.info('Removing inactive session', { userId });
+            // logger.info('Removing inactive session', { userId });
             await this.destroySession(userId);
         }
 
         if (sessionsToRemove.length > 0) {
-            logger.info('Cleanup completed', { 
-                removedSessions: sessionsToRemove.length,
-                remainingSessions: this.sessions.size 
-            });
+            // logger.info('Cleanup completed', { 
+            //     removedSessions: sessionsToRemove.length,
+            //     remainingSessions: this.sessions.size 
+            // });
         }
     }
 
@@ -248,9 +255,9 @@ class SessionManager {
             }
         }, cleanupIntervalMs);
 
-        logger.info('Cleanup scheduler started', { 
-            intervalMinutes: config.sessions.cleanupIntervalMinutes 
-        });
+        // logger.info('Cleanup scheduler started', { 
+        //     intervalMinutes: config.sessions.cleanupIntervalMinutes 
+        // });
     }
 
     getStats() {

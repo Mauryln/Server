@@ -78,6 +78,13 @@ const upload = multer({
 app.use((req, res, next) => {
     const start = Date.now();
     res.on('finish', () => {
+        // Evitar logs innecesarios en endpoints muy consultados
+        const skipLogging = (
+            req.url.startsWith('/session-status') ||
+            req.url.startsWith('/labels') ||
+            req.url.startsWith('/get-qr')
+        );
+        if (skipLogging) return;
         const duration = Date.now() - start;
         logger.info('HTTP Request', {
             method: req.method,
@@ -94,12 +101,31 @@ app.use((req, res, next) => {
 // --- Health Check ---
 app.get('/health', (req, res) => {
     const stats = sessionManager.getStats();
+    // Formatear uso de memoria en MB y agregar advertencia si es alto
+    const mem = stats.memoryUsage;
+    const memoryMB = {
+        rss: (mem.rss / 1024 / 1024).toFixed(2) + ' MB',
+        heapTotal: (mem.heapTotal / 1024 / 1024).toFixed(2) + ' MB',
+        heapUsed: (mem.heapUsed / 1024 / 1024).toFixed(2) + ' MB',
+        external: (mem.external / 1024 / 1024).toFixed(2) + ' MB',
+        arrayBuffers: (mem.arrayBuffers / 1024 / 1024).toFixed(2) + ' MB',
+    };
+    let memoryWarning = null;
+    if (mem.heapUsed / 1024 / 1024 > 1500) {
+        memoryWarning = '¡Advertencia! El uso de memoria es muy alto.';
+    }
     res.json({
         success: true,
         status: 'healthy',
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
-        stats: stats
+        sessions: {
+            total: stats.totalSessions,
+            max: stats.maxSessions,
+            byStatus: stats.sessionsByStatus
+        },
+        memory: memoryMB,
+        memoryWarning
     });
 });
 
@@ -370,10 +396,8 @@ app.get('/labels/:userId/all-chats', async (req, res) => {
         sessionManager.updateActivity(userId);
 
         if (typeof client.getLabels !== 'function' || typeof client.getChatsByLabelId !== 'function') {
-            return res.status(501).json({
-                success: false,
-                error: 'Labels or chats by label not supported for this account.'
-            });
+            logger.warn('Label functions not found for this client, returning empty list.', { userId });
+            return res.json({ success: true, labels: [], message: 'No se encontraron etiquetas para esta cuenta.' });
         }
 
         const labels = await client.getLabels();
@@ -488,83 +512,88 @@ app.post('/send-messages', upload.single('media'), async (req, res) => {
 
     logger.info('Starting to send messages', { userId, total, delay: sendDelay });
 
-    // Responder inmediatamente
-    res.json({
-        success: true,
-        message: `Message sending process initiated for ${total} numbers.`,
-        summary: { enviados: 0, fallidos: 0, total },
-    });
-
-    // Procesar envío en background
-    (async () => {
-        try {
+    // Procesar envío en foreground (esperar a terminar)
+    try {
+        for (let i = 0; i < numbersRaw.length; i++) {
+            // Actualizar actividad en cada iteración para evitar timeout
             sessionManager.updateActivity(userId);
 
-            for (let i = 0; i < numbersRaw.length; i++) {
-                const originalNumber = numbersRaw[i];
-                const currentMessage = mensajesPorNumero[i] || message || "";
-                let numberOnly = originalNumber.replace(/\D/g, '');
+            const originalNumber = numbersRaw[i];
+            const currentMessage = mensajesPorNumero[i] || message || "";
+            let numberOnly = originalNumber.replace(/\D/g, '');
 
-                if (!originalNumber.includes('+') && numberOnly.length === 8 && !numberOnly.startsWith('591')) {
-                    numberOnly = '591' + numberOnly;
-                } else if (originalNumber.includes('+')) {
-                    numberOnly = originalNumber.replace(/\D/g, '');
-                }
+            if (!originalNumber.includes('+') && numberOnly.length === 8 && !numberOnly.startsWith('591')) {
+                numberOnly = '591' + numberOnly;
+            } else if (originalNumber.includes('+')) {
+                numberOnly = originalNumber.replace(/\D/g, '');
+            }
 
-                try {
-                    const recipientWID = await client.getNumberId(numberOnly);
+            try {
+                const recipientWID = await client.getNumberId(numberOnly);
 
-                    if (recipientWID) {
-                        const chatId = recipientWID._serialized;
-                        
-                        if (media) {
-                            await client.sendMessage(chatId, media, { caption: currentMessage || undefined });
-                            logger.info('Media sent successfully', { userId, number: numberOnly });
-                        } else if (currentMessage) {
-                            await client.sendMessage(chatId, currentMessage);
-                            logger.info('Message sent successfully', { userId, number: numberOnly });
-                        }
-                        
-                        enviados++;
-                    } else {
-                        logger.warn('Number not registered', { userId, number: numberOnly });
-                        failedNumbers.push({ number: originalNumber, reason: "Not a valid WhatsApp number" });
-                        fallidos++;
+                if (recipientWID) {
+                    const chatId = recipientWID._serialized;
+                    
+                    if (media) {
+                        await client.sendMessage(chatId, media, { caption: currentMessage || undefined });
+                        logger.info('Media sent successfully', { userId, number: numberOnly });
+                    } else if (currentMessage) {
+                        await client.sendMessage(chatId, currentMessage);
                     }
-                } catch (err) {
-                    logger.error('Error sending message', { userId, number: numberOnly, error: err.message });
-                    failedNumbers.push({ number: originalNumber, reason: err.message || 'Send failed' });
+                    
+                    enviados++;
+                } else {
+                    logger.warn('Number not registered', { userId, number: numberOnly });
+                    failedNumbers.push({ number: originalNumber, reason: "Not a valid WhatsApp number" });
                     fallidos++;
                 }
-
-                // Delay entre mensajes
-                if (i < numbersRaw.length - 1) {
-                    await new Promise(resolve => setTimeout(resolve, sendDelay));
-                }
+            } catch (err) {
+                logger.error('Error sending message', { userId, number: numberOnly, error: err.message });
+                failedNumbers.push({ number: originalNumber, reason: err.message || 'Send failed' });
+                fallidos++;
             }
 
-            logger.info('Message sending process completed', { 
-                userId, 
-                enviados, 
-                fallidos, 
-                total,
-                failedNumbers: failedNumbers.length > 0 ? failedNumbers : undefined
-            });
-
-        } catch (error) {
-            logger.error('Error in message sending process', { userId, error: error.message });
-        } finally {
-            // Limpiar archivo de media
-            if (mediaFile) {
-                fs.unlink(mediaFile.path, (err) => {
-                    if (err) logger.error('Error deleting uploaded file', { error: err.message });
-                });
+            // Delay entre mensajes
+            if (i < numbersRaw.length - 1) {
+                await new Promise(resolve => setTimeout(resolve, sendDelay));
             }
-            
-            // Liberar lock
-            sessionManager.releaseLock(userId);
         }
-    })();
+
+        logger.info('Message sending process completed', { 
+            userId, 
+            enviados, 
+            fallidos, 
+            total,
+            failedNumbers: failedNumbers.length > 0 ? failedNumbers : undefined
+        });
+
+        // Limpiar archivo de media
+        if (mediaFile) {
+            fs.unlink(mediaFile.path, (err) => {
+                if (err) logger.error('Error deleting uploaded file', { error: err.message });
+            });
+        }
+        
+        // Liberar lock
+        sessionManager.releaseLock(userId);
+
+        // Responder al frontend SOLO cuando termine
+        return res.json({
+            success: true,
+            message: `Mensajes enviados a ${total} números.`,
+            summary: { enviados, fallidos, total },
+            failedNumbers
+        });
+    } catch (error) {
+        logger.error('Error in message sending process', { userId, error: error.message });
+        if (mediaFile) {
+            fs.unlink(mediaFile.path, (err) => {
+                if (err) logger.error('Error deleting uploaded file', { error: err.message });
+            });
+        }
+        sessionManager.releaseLock(userId);
+        return res.status(500).json({ success: false, error: error.message });
+    }
 });
 
 app.get('/reports/:userId/:labelId/messages', async (req, res) => {

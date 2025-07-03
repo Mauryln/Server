@@ -15,7 +15,8 @@ const config = {
     // Configuración de sesiones
     sessions: {
         maxSessions: parseInt(process.env.MAX_SESSIONS) || 50,
-        cleanupIntervalMinutes: parseInt(process.env.CLEANUP_INTERVAL_MINUTES) || 1440, // 1 día
+        cleanupIntervalMinutes: parseInt(process.env.CLEANUP_INTERVAL_MINUTES) || 15, // 15 minutos
+        timeoutMinutes: parseInt(process.env.SESSION_TIMEOUT_MINUTES) || 60, // 1 hora
     },
     
     // Configuración de Puppeteer
